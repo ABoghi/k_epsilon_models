@@ -225,12 +225,13 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
 
-        subroutine  budget_k_epsilon(ny,U,Kt,eps,nut,f1,f2,deta,sigmaK,sigmaE,Ce1,Ce2,tau_mu,tau_R,Pk,Tk,Dk,Peps,Teps,Deps, &
-                    epseps, detady, d2etady2)
+        subroutine  budget_k_epsilon(ny,U,Kt,eps,nut,r,f1,f2,deta,sigmaK,sigmaE,Ce1,Ce2,tau_mu,tau_R,Pk,Tk,Dk,Peps,Teps,Deps, &
+                    epseps, detady, d2etady2, is_cartesian)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: deta,sigmaK,sigmaE,Ce1,Ce2,f1,f2(1:ny),Kt(1:ny),eps(1:ny),nut(1:ny),U(1:ny)
-            real*8, intent(in) :: detady(1:ny),d2etady2(1:ny)
+            real*8, intent(in) :: deta,sigmaK,sigmaE,Ce1,Ce2,f1(1:ny),f2(1:ny),Kt(1:ny),eps(1:ny),nut(1:ny),U(1:ny)
+            real*8, intent(in) :: detady(1:ny),d2etady2(1:ny),r(1:ny)
+            LOGICAL, INTENT(IN) :: is_cartesian
             real*8, INTENT(OUT) :: tau_mu(1:ny),tau_R(1:ny),Pk(1:ny),Tk(1:ny),Dk(1:ny)
             real*8, INTENT(OUT) :: Peps(1:ny),Teps(1:ny),Deps(1:ny),epseps(1:ny)
             real*8 dUdy(1:ny),d2Ktdeta2(1:ny),d2epsdeta2(1:ny),dKtdeta(1:ny),depsdeta(1:ny),dnutdy(1:ny)
@@ -249,20 +250,53 @@ MODULE K_EPSILON_MODELS
             call ddeta(ny,Kt,dKtdeta,deta)
 
             Dk = d2Ktdeta2*detady**2.d0 + dKtdeta*d2etady2
-            Tk = (nut/sigmaK)*Dk + (dKtdeta*detady/sigmaK)*dnutdy
+            
+            if(.NOT. is_cartesian) then
+                if(r(1)==0.d0) then
+                    Dk(1) = Dk(1) + d2Ktdeta2(1)*detady(1)**2.d0 + dKtdeta(1)*d2etady2(1)
+                    Dk(2:ny) = Dk(2:ny) + dKtdeta(2:ny) * detady(2:ny) / r(2:ny)
+                    Deps(1) = Deps(1) + d2epsdeta2(1)*detady(1)**2.d0 + depsdeta(1)*d2etady2(1)
+                    Deps(2:ny) = Deps(2:ny) + depsdeta(2:ny) * detady(2:ny) / r(2:ny)
+                else if(r(ny)==0.d0) then
+                    Dk(ny) = Dk(ny) + d2Ktdeta2(ny)*detady(ny)**2.d0 + dKtdeta(ny)*d2etady2(ny)
+                    Dk(1:ny-1) = Dk(1:ny-1) + dKtdeta(1:ny-1) * detady(1:ny-1) / r(1:ny-1)
+                    Deps(ny) = Deps(ny) + d2epsdeta2(ny)*detady(ny)**2.d0 + depsdeta(ny)*d2etady2(ny)
+                    Deps(1:ny-1) = Deps(1:ny-1) + depsdeta(1:ny-1) * detady(1:ny-1) / r(1:ny-1)
+                else
+                    Dk = Dk + dKtdeta * detady / r
+                    Deps = Deps + depsdeta * detady / r
+                endif
+            endif
 
-            Peps(2:ny) = f1*Ce1*(eps(2:ny)/Kt(2:ny))*Pk(2:ny)
-            Peps(1) = Peps(2)
+            Tk = (nut/sigmaK)*Dk + (dKtdeta*detady/sigmaK)*dnutdy
+            Teps = (nut/sigmaE)*Deps + (depsdeta*detady/sigmaE)*dnutdy
+
+            if(Kt(1)==0.d0 .AND. Kt(ny)/=0.d0) then
+                Peps(2:ny) = f1(2:ny)*Ce1*(eps(2:ny)/Kt(2:ny))*Pk(2:ny)
+                Peps(1) = Peps(2)
+                epsEps(2:ny) = -f2(2:ny)*Ce2*(eps(2:ny)/Kt(2:ny))*eps(2:ny)
+                epsEps(1) = epsEps(2)
+            else if(Kt(ny)==0.d0 .AND. Kt(1)/=0.d0) then
+                Peps(1:ny-1) = f1(1:ny-1)*Ce1*(eps(1:ny-1)/Kt(1:ny-1))*Pk(1:ny-1)
+                Peps(ny) = Peps(ny-1)
+                epsEps(1:ny-1) = -f2(1:ny-1)*Ce2*(eps(1:ny-1)/Kt(1:ny-1))*eps(1:ny-1)
+                epsEps(ny) = epsEps(ny-1)
+            else if(Kt(ny)==0.d0 .AND. Kt(1)==0.d0) then
+                Peps(2:ny-1) = f1(2:ny-1)*Ce1*(eps(2:ny-1)/Kt(2:ny-1))*Pk(2:ny-1)
+                Peps(1) = Peps(2)
+                Peps(ny) = Peps(ny-1)
+                epsEps(2:ny-1) = -f2(2:ny-1)*Ce2*(eps(2:ny-1)/Kt(2:ny-1))*eps(2:ny-1)
+                epsEps(1) = epsEps(2)
+                epsEps(ny) = epsEps(ny-1)
+            else
+                Peps = f1*Ce1*(eps/Kt)*Pk
+                epsEps = -f2*Ce2*(eps/Kt)*eps
+            endif
 
             call d2deta2(ny,eps,D2epsdeta2,deta)
             call ddeta(ny,eps,depsdeta,deta)
 
-            Deps = d2epsdeta2*detady**2.d0 + depsdeta*d2etady2
-            Teps = (nut/sigmaE)*Deps + (depsdeta*detady/sigmaE)*dnutdy
-            epsEps(2:ny-1) = -f2(2:ny-1)*Ce2*(eps(2:ny-1)/Kt(2:ny-1))*eps(2:ny-1)
-            epsEps(1) = epsEps(2)
-            epsEps(ny) = epsEps(ny-1)
-
+            
             end
 
         !!!*************************************************
