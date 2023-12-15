@@ -114,13 +114,14 @@ MODULE K_EPSILON_MODELS
         !!!*                U coefficients	       	   *
         !!!*								                   *
         !!!***************************************************
-        subroutine  u_coefficients(aU_w,aU_e,sU,nut,dnutdy_plus,deta,Re_tau,d2etady2,detady)
+        subroutine  u_coefficients(aU_w,aU_e,sU,nut,dnutdy,deta,Re_tau,d2etady2,detady,r,is_cartesian)
             implicit none
-            real*8, intent(in) :: nut,dnutdy_plus,deta,Re_tau,d2etady2,detady
+            real*8, intent(in) :: nut,dnutdy,deta,Re_tau,d2etady2,detady,r
+            LOGICAL, INTENT(IN) :: is_cartesian
             real*8, intent(out) :: aU_w,aU_e,sU
             real*8 dev
 
-            dev = deta*( (1.d0+nut)*d2etady2 + dnutdy_plus*detady )/(4.d0*(1.d0+nut)*(detady)**2.d0)
+            dev = deta*( (1.d0+nut)*d2etady2 + dnutdy*detady )/(4.d0*(1.d0+nut)*(detady)**2.d0)
 
             aU_w = 5.d-1 - dev
             aU_e = 5.d-1 + dev
@@ -133,13 +134,14 @@ MODULE K_EPSILON_MODELS
         !!!*                K coefficients	       	   *
         !!!*								                   *
         !!!***************************************************
-        subroutine  K_coefficients(aK_w,aK_e,sK,eps,nut,dnutdy_plus,dUdy_plus,D,deta,sigmak,d2etady2,detady)
+        subroutine  K_coefficients(aK_w,aK_e,sK,eps,nut,dnutdy,dUdy_plus,D,deta,sigmak,d2etady2,detady,r,is_cartesian)
             implicit none
-            real*8, intent(in) :: eps,nut,dnutdy_plus,dUdy_plus,D,deta,sigmak,d2etady2,detady
+            real*8, intent(in) :: eps,nut,dnutdy,dUdy_plus,D,deta,sigmak,d2etady2,detady,r
+            LOGICAL, INTENT(IN) :: is_cartesian
             real*8, intent(out) :: aK_w,aK_e,sK
             real*8 dev
 
-            dev = deta*( (sigmak+nut)*d2etady2 + dnutdy_plus*detady )/(4.d0*(sigmak+nut)*detady**2.d0)
+            dev = deta*( (sigmak+nut)*d2etady2 + dnutdy*detady )/(4.d0*(sigmak+nut)*detady**2.d0)
 
             aK_w = 5.d-1 - dev
             aK_e = 5.d-1 + dev
@@ -152,25 +154,25 @@ MODULE K_EPSILON_MODELS
         !!!*                E coefficients	       	   *
         !!!*								                   *
         !!!***************************************************
-        subroutine  E_coefficients(aE_w,aE_e,sE,eps,Kt,nut,dnutdy_plus,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2, &
-                    detady,in_source)
+        subroutine  E_coefficients(aE_w,aE_e,sE,eps,Kt,nut,dnutdy,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2, &
+                    detady,r,is_cartesian,in_source)
             implicit none
-            real*8, intent(in) :: eps,Kt,nut,dnutdy_plus,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2,detady
+            real*8, intent(in) :: eps,Kt,nut,dnutdy,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2,detady,r
             real*8, intent(out) :: aE_w,aE_e,sE
-            logical, INTENT(IN) :: in_source
+            logical, INTENT(IN) :: is_cartesian,in_source
             real*8 K_min, Kb, dev
             
-            dev = deta*( (sigmae+nut)*d2etady2 + dnutdy_plus*detady )/(4.d0*(sigmae+nut)*detady**2.d0)
+            dev = deta*( (sigmae+nut)*d2etady2 + dnutdy*detady )/(4.d0*(sigmae+nut)*detady**2.d0)
 
             K_min = 1.d-12
 
-            Kb = (Ce1*f1*nut*dUdy_plus*dUdy_plus + E -Ce2*f2*eps)*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
+            Kb = (Ce1*f1*nut*dUdy_plus*dUdy_plus -Ce2*f2*eps)*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
 
             if (in_source) then
                 aE_w = 5.d-1 - dev
                 aE_e = 5.d-1 + dev
                 if (Kt<=K_min) then
-                    sE = 0.d0*Kb*eps/K_min
+                    sE = Kb*eps/K_min 
                 else
                     sE = Kb*eps/Kt
                 endif
@@ -179,6 +181,8 @@ MODULE K_EPSILON_MODELS
                 aE_e = (5.d-1 + dev)/(1.d0 - Kb/Kt)
                 sE = 0.d0 
             endif
+
+            sE = sE + E*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
 
             end
 
@@ -234,11 +238,11 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
             
-        subroutine  solve_u_1D(U,nut,dnutdy,detady,d2etady2,deta,Re_tau,ny,is_thomas,is_wall_1,is_wall_ny)
+        subroutine  solve_u_1D(U,nut,dnutdy,detady,d2etady2,deta,Re_tau,r,ny,is_cartesian,is_thomas,is_wall_1,is_wall_ny)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),deta,Re_tau
-            LOGICAL, INTENT(IN) :: is_thomas,is_wall_1, is_wall_ny
+            real*8, intent(in) :: nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),r(1:ny),deta,Re_tau
+            LOGICAL, INTENT(IN) :: is_cartesian,is_thomas,is_wall_1, is_wall_ny
             real*8, intent(inout) :: U(1:ny)
             real*8 aU_w,aU_e,sU
             real*8 A(1:ny),C_apex(1:ny),denominator
@@ -248,7 +252,7 @@ MODULE K_EPSILON_MODELS
                 U(1) = 0.d0
             else
                 j=1
-                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j),r(j),is_cartesian)
                 U(1) =  sU + (aU_e + aU_w)*U(2)
             endif
 
@@ -256,28 +260,28 @@ MODULE K_EPSILON_MODELS
                 U(ny) = 0.d0
             else
                 j=ny
-                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j),r(j),is_cartesian)
                 U(ny) =  sU + (aU_e + aU_w)*U(ny-1)
             endif
 
             if(is_thomas) then
 
                 if(is_wall_1) then
-                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2))
+                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2),r(2),is_cartesian)
                     A(2) = aU_e
                     C_apex(2) = sU + aU_w * U(1)
                 else
-                    call u_coefficients(aU_w,aU_e,sU,nut(1),dnutdy(1),deta,Re_tau,d2etady2(1),detady(1))                   
+                    call u_coefficients(aU_w,aU_e,sU,nut(1),dnutdy(1),deta,Re_tau,d2etady2(1),detady(1),r(2),is_cartesian)                   
                     A(1) = aU_e + aU_w
                     C_apex(1) = sU
-                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2))
+                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2),r(2),is_cartesian)
                     denominator = ( 1.d0 - aU_w * A(1) )
                     A(2) = aU_e / denominator
                     C_apex(2) = ( aU_w * C_apex(1) + sU ) / denominator
                 endif
 
                 do j =3,ny
-                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j),r(j),is_cartesian)
                     denominator = ( 1.d0 - aU_w * A(j-1) )
                     A(j) = aU_e / denominator
                     C_apex(j) = ( aU_w * C_apex(j-1) + sU ) / denominator
@@ -290,9 +294,8 @@ MODULE K_EPSILON_MODELS
             else
 
                 do j =2,ny-1
-                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j),r(j),is_cartesian)
                     U(j) =  sU + aU_e*U(j+1) + aU_w*U(j-1)
-                    !!!U(j) = A(j) * U(j+1) + C_apex(j)
                 enddo
 
             endif
@@ -306,11 +309,13 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
             
-        subroutine  solve_Kt_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,D,deta,sigmak,ny,is_thomas,is_wall_1,is_wall_ny)
+        subroutine  solve_Kt_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,D,r,deta,sigmak,ny,is_cartesian,is_thomas, &
+            is_wall_1,is_wall_ny)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: eps(1:ny),dUdy(1:ny),nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),D(1:ny),deta,sigmak
-            LOGICAL, INTENT(IN) :: is_thomas,is_wall_1, is_wall_ny
+            real*8, intent(in) :: eps(1:ny),dUdy(1:ny),nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),r(1:ny),D(1:ny)
+            real*8, intent(in) :: deta,sigmak
+            LOGICAL, INTENT(IN) :: is_cartesian,is_thomas,is_wall_1, is_wall_ny
             real*8, intent(inout) :: Kt(1:ny)
             real*8 aK_w,aK_e,sK
             real*8 A(1:ny),C_apex(1:ny),denominator
@@ -320,7 +325,8 @@ MODULE K_EPSILON_MODELS
                 Kt(1) = 0.d0
             else
                 j=1
-                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j),r(j), &
+                is_cartesian)
                 Kt(1) = sK + (aK_e + aK_w)*Kt(2)
             endif
 
@@ -328,27 +334,32 @@ MODULE K_EPSILON_MODELS
                 Kt(ny) = 0.d0
             else
                 j=ny
-                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j),r(j), &
+                is_cartesian)
                 Kt(ny) = sK + (aK_e + aK_w)*Kt(ny-1)
             endif
 
             if(is_thomas) then
 
                 if(is_wall_1) then
-                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2))
+                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2),r(2),&
+                    is_cartesian)
                     A(2) = aK_e
                     C_apex(2) = sK + aK_w * Kt(1)
                 else 
-                    call K_coefficients(aK_w,aK_e,sK,eps(1),nut(1),dnutdy(1),dUdy(1),D(1),deta,sigmak,d2etady2(1),detady(1))                   
+                    call K_coefficients(aK_w,aK_e,sK,eps(1),nut(1),dnutdy(1),dUdy(1),D(1),deta,sigmak,d2etady2(1),detady(1),r(1), &
+                    is_cartesian)                   
                     A(1) = aK_e + aK_w
                     C_apex(1) = sK
-                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2))
+                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2),r(2), &
+                    is_cartesian)
                     denominator = ( 1.d0 - aK_w * A(1) )
                     A(2) = aK_e / denominator
                     C_apex(2) = ( aK_w * C_apex(1) + sK ) / denominator
                 endif
                 do j =3,ny
-                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j),r(j), &
+                    is_cartesian)
                     denominator = ( 1.d0 - aK_w * A(j-1) )
                     A(j) = aK_e / denominator
                     C_apex(j) = ( aK_w * C_apex(j-1) + sK ) / denominator
@@ -362,7 +373,8 @@ MODULE K_EPSILON_MODELS
             else
                 
                 do j =2,ny-1
-                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j),r(j), &
+                    is_cartesian)
                     Kt(j) = sK + aK_e*Kt(j+1) + aK_w*Kt(j-1)
                 enddo
                 
@@ -376,13 +388,13 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
             
-        subroutine  solve_eps_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,E,deta,sigmae,ce1,ce2,f1,f2,eps_wall_1,eps_wall_ny,ny, &
-                    is_thomas,is_wall_1,is_wall_ny,in_source)
+        subroutine  solve_eps_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,E,r,deta,sigmae,ce1,ce2,f1,f2,eps_wall_1,eps_wall_ny, &
+                    ny, is_cartesian,is_thomas,is_wall_1,is_wall_ny,in_source)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),dUdy(1:ny),nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),deta,sigmae
-            real*8, intent(in) :: E(1:ny),ce1,ce2,f1(1:ny),f2(1:ny),eps_wall_1,eps_wall_ny
-            LOGICAL, INTENT(IN) :: is_thomas,is_wall_1, is_wall_ny, in_source
+            real*8, intent(in) :: E(1:ny),r(1:ny),ce1,ce2,f1(1:ny),f2(1:ny),eps_wall_1,eps_wall_ny
+            LOGICAL, INTENT(IN) :: is_cartesian,is_thomas,is_wall_1, is_wall_ny, in_source
             real*8, intent(inout) :: eps(1:ny)
             real*8 aE_w,aE_e,sE
             real*8 A(1:ny),C_apex(1:ny),denominator
@@ -393,7 +405,7 @@ MODULE K_EPSILON_MODELS
             else 
                 j=1
                 call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                d2etady2(j), detady(j), in_source)
+                d2etady2(j), detady(j),r(j),is_cartesian, in_source)
                 eps(1) = sE + (aE_e + aE_w)*eps(2)
             endif
 
@@ -402,7 +414,7 @@ MODULE K_EPSILON_MODELS
             else 
                 j=ny
                 call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                d2etady2(j), detady(j), in_source)
+                d2etady2(j), detady(j),r(j),is_cartesian, in_source)
                 eps(ny) = sE + (aE_e + aE_w)*eps(ny-1)
             endif
 
@@ -410,23 +422,23 @@ MODULE K_EPSILON_MODELS
 
                 if(is_wall_1) then
                     call E_coefficients(aE_w,aE_e,sE,eps(2),Kt(2),nut(2),dnutdy(2),dUdy(2),E(2),deta,sigmae,Ce1,f1(2),Ce2,f2(2), &
-                        d2etady2(2),detady(2), in_source)
+                        d2etady2(2),detady(2),r(2),is_cartesian, in_source)
                     A(2) = aE_e
                     C_apex(2) = sE + aE_w * eps(1)
                 else 
                     call E_coefficients(aE_w,aE_e,sE,eps(1),Kt(1),nut(1),dnutdy(1),dUdy(1),E(1),deta,sigmae,Ce1,f1(1),Ce2,f2(1), &
-                        d2etady2(1),detady(1), in_source)                   
+                        d2etady2(1),detady(1),r(1),is_cartesian, in_source)                   
                     A(1) = aE_e + aE_w
                     C_apex(1) = sE
                     call E_coefficients(aE_w,aE_e,sE,eps(2),Kt(2),nut(2),dnutdy(2),dUdy(2),E(2),deta,sigmae,Ce1,f1(2),Ce2,f2(2), &
-                        d2etady2(2),detady(2), in_source)
+                        d2etady2(2),detady(2),r(2),is_cartesian, in_source)
                     denominator = ( 1.d0 - aE_w * A(1) )
                     A(2) = aE_e / denominator
                     C_apex(2) = ( aE_w * C_apex(1) + sE ) / denominator
                 endif
                 do j =3,ny
                     call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                    d2etady2(j),detady(j), in_source)
+                    d2etady2(j),detady(j),r(j),is_cartesian, in_source)
                     denominator = ( 1.d0 - aE_w * A(j-1) )
                     A(j) = aE_e / denominator
                     C_apex(j) = ( aE_w * C_apex(j-1) + sE ) / denominator
@@ -440,7 +452,7 @@ MODULE K_EPSILON_MODELS
 
                 do j =2,ny-1
                     call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                    d2etady2(j), detady(j), in_source)
+                    d2etady2(j), detady(j),r(j),is_cartesian, in_source)
                     eps(j) = sE + aE_e*eps(j+1) + aE_w*eps(j-1)
                 enddo 
 
