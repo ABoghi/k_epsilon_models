@@ -269,13 +269,25 @@ MODULE K_EPSILON_MODELS
 
             else
 
-                U(1) = 0.d0
+                if(is_wall_1) then
+                    U(1) = 0.d0
+                else
+                    j=1
+                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                    U(1) =  sU + (aU_e + aU_w)*U(2)
+                endif
                 do j =2,ny-1
                     call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
                     U(j) =  sU + aU_e*U(j+1) + aU_w*U(j-1)
                     !!!U(j) = A(j) * U(j+1) + C_apex(j)
                 enddo
-                U(ny) = 0.d0
+                if(is_wall_ny) then
+                    U(ny) = 0.d0
+                else
+                    j=ny
+                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                    U(ny) =  sU + (aU_e + aU_w)*U(ny-1)
+                endif
 
             endif
 
@@ -324,12 +336,24 @@ MODULE K_EPSILON_MODELS
 
             else
                 
-                Kt(1) = 0.d0
+                if(is_wall_1) then
+                    Kt(1) = 0.d0
+                else
+                    j=1
+                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                    Kt(1) = sK + (aK_e + aK_w)*Kt(2)
+                endif
                 do j =2,ny-1
                     call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
                     Kt(j) = sK + aK_e*Kt(j+1) + aK_w*Kt(j-1)
                 enddo
-                Kt(ny) = 0.d0
+                if(is_wall_ny) then
+                    Kt(ny) = 0.d0
+                else
+                    j=ny
+                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                    Kt(ny) = sK + (aK_e + aK_w)*Kt(ny-1)
+                endif
                 
             endif
 
@@ -379,13 +403,27 @@ MODULE K_EPSILON_MODELS
 
             else
 
-                eps(1) = eps_wall_1
+                if(is_wall_1) then
+                    eps(1) = eps_wall_1
+                else 
+                    j=1
+                    call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
+                    d2etady2(j), detady(j), in_source)
+                    eps(1) = sE + (aE_e + aE_w)*eps(2)
+                endif
                 do j =2,ny-1
                     call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
                     d2etady2(j), detady(j), in_source)
                     eps(j) = sE + aE_e*eps(j+1) + aE_w*eps(j-1)
                 enddo 
-                eps(ny) = eps_wall_ny 
+                if(is_wall_ny) then
+                    eps(ny) = eps_wall_ny 
+                else 
+                    j=ny
+                    call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
+                    d2etady2(j), detady(j), in_source)
+                    eps(ny) = sE + (aE_e + aE_w)*eps(ny-1)
+                endif
 
             endif
 
