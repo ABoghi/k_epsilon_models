@@ -121,12 +121,24 @@ MODULE K_EPSILON_MODELS
             real*8, intent(out) :: aU_w,aU_e,sU
             real*8 dev
 
-            dev = deta*( (1.d0+nut)*d2etady2 + dnutdy*detady )/(4.d0*(1.d0+nut)*(detady)**2.d0)
+            if(is_cartesian) then
+                dev = deta*( d2etady2 + dnutdy*detady/(1.d0+nut) )/(4.d0*detady**2.d0)
+                sU = (deta*deta)/(2.d0*Re_tau*(1.d0+nut)*(detady)**2.d0)
+            else 
+
+                if(r>0.d0) then
+                    dev = deta*( d2etady2 + (1.d0/r + dnutdy/(1.d0+nut))*detady )/(4.d0*detady**2.d0)
+                    sU = (deta*deta)/(Re_tau*(1.d0+nut)*(detady)**2.d0)
+                else 
+                    dev = (deta / 4.d0) * d2etady2 / (detady)**2.d0
+                    sU = (deta*deta)/(2.d0*Re_tau*(1.d0+nut)*detady**2.d0)
+                endif
+
+            endif
 
             aU_w = 5.d-1 - dev
             aU_e = 5.d-1 + dev
-            sU = (deta*deta)/(2.d0*Re_tau*(1.d0+nut)*(detady)**2.d0)
-
+            
             end
 
         !!!***************************************************
@@ -134,18 +146,29 @@ MODULE K_EPSILON_MODELS
         !!!*                K coefficients	       	   *
         !!!*								                   *
         !!!***************************************************
-        subroutine  K_coefficients(aK_w,aK_e,sK,eps,nut,dnutdy,dUdy_plus,D,deta,sigmak,d2etady2,detady,r,is_cartesian)
+        subroutine  K_coefficients(aK_w,aK_e,sK,eps,nut,dnutdy,dUdy,D,deta,sigmak,d2etady2,detady,r,is_cartesian)
             implicit none
-            real*8, intent(in) :: eps,nut,dnutdy,dUdy_plus,D,deta,sigmak,d2etady2,detady,r
+            real*8, intent(in) :: eps,nut,dnutdy,dUdy,D,deta,sigmak,d2etady2,detady,r
             LOGICAL, INTENT(IN) :: is_cartesian
             real*8, intent(out) :: aK_w,aK_e,sK
             real*8 dev
 
-            dev = deta*( (sigmak+nut)*d2etady2 + dnutdy*detady )/(4.d0*(sigmak+nut)*detady**2.d0)
+            if(is_cartesian) then
+                dev = deta*( d2etady2 + dnutdy/(sigmak+nut)*detady )/(4.d0*detady**2.d0)
+                sK = (nut*dUdy*dUdy - D - eps)*(deta*deta)/(2.d0*(1.d0+nut/sigmak)*detady**2.d0)
+            else
+                if(r>0.d0) then
+                    dev = deta*( d2etady2 + (1.d0/r + dnutdy/(sigmak+nut))*detady )/(4.d0*detady**2.d0)
+                    sK = (nut*dUdy*dUdy - eps)*(deta*deta)/(2.d0*(1.d0+nut/sigmak)*detady**2.d0)
+                else
+                    dev = (deta / 4.d0) * d2etady2 / (detady)**2.d0
+                    sK = - (D+eps)*(deta*deta)/(4.d0*(1.d0+nut/sigmak)*detady**2.d0)
+                endif
+            endif
 
             aK_w = 5.d-1 - dev
             aK_e = 5.d-1 + dev
-            sK = (nut*dUdy_plus*dUdy_plus - D - eps)*(deta*deta)/(2.d0*(1.d0+nut/sigmak)*detady**2.d0)
+            
 
             end
 
@@ -154,19 +177,29 @@ MODULE K_EPSILON_MODELS
         !!!*                E coefficients	       	   *
         !!!*								                   *
         !!!***************************************************
-        subroutine  E_coefficients(aE_w,aE_e,sE,eps,Kt,nut,dnutdy,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2, &
+        subroutine  E_coefficients(aE_w,aE_e,sE,eps,Kt,nut,dnutdy,dUdy,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2, &
                     detady,r,is_cartesian,in_source)
             implicit none
-            real*8, intent(in) :: eps,Kt,nut,dnutdy,dUdy_plus,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2,detady,r
+            real*8, intent(in) :: eps,Kt,nut,dnutdy,dUdy,E,deta,sigmae,Ce1,f1,Ce2,f2,d2etady2,detady,r
             real*8, intent(out) :: aE_w,aE_e,sE
             logical, INTENT(IN) :: is_cartesian,in_source
             real*8 K_min, Kb, dev
             
-            dev = deta*( (sigmae+nut)*d2etady2 + dnutdy*detady )/(4.d0*(sigmae+nut)*detady**2.d0)
+            if(is_cartesian) then
+                dev = deta*( (sigmae+nut)*d2etady2 + dnutdy*detady )/(4.d0*(sigmae+nut)*detady**2.d0)
+                Kb = (Ce1*f1*nut*dUdy*dUdy -Ce2*f2*eps)*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
+            else 
+                if(r>0.d0) then
+                    dev = deta*( d2etady2 + (1.d0/r + dnutdy/(sigmae+nut))*detady )/(4.d0*detady**2.d0)
+                    Kb = (Ce1*f1*nut*dUdy*dUdy -Ce2*f2*eps)*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
+                else
+                    dev = (deta / 4.d0) * d2etady2 / (detady)**2.d0
+                    Kb = -Ce2*f2*eps*(deta*deta/(4.d0*(1.d0+nut/sigmae)*detady**2.d0))
+                endif
 
-            K_min = 1.d-12
+            endif
 
-            Kb = (Ce1*f1*nut*dUdy_plus*dUdy_plus -Ce2*f2*eps)*(deta*deta/(2.d0*(1.d0+nut/sigmae)*detady**2.d0))
+            K_min = 1.d-60
 
             if (in_source) then
                 aE_w = 5.d-1 - dev
