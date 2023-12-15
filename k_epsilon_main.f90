@@ -244,24 +244,44 @@ MODULE K_EPSILON_MODELS
             real*8 A(1:ny),C_apex(1:ny),denominator
             integer j
 
+            if(is_wall_1) then
+                U(1) = 0.d0
+            else
+                j=1
+                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                U(1) =  sU + (aU_e + aU_w)*U(2)
+            endif
+
+            if(is_wall_ny) then
+                U(ny) = 0.d0
+            else
+                j=ny
+                call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
+                U(ny) =  sU + (aU_e + aU_w)*U(ny-1)
+            endif
+
             if(is_thomas) then
 
-                U(1) = 0.d0
-                call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2))
-                A(2) = aU_e
-                C_apex(2) = sU + aU_w * U(1)
-                do j =3,ny-1
+                if(is_wall_1) then
+                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2))
+                    A(2) = aU_e
+                    C_apex(2) = sU + aU_w * U(1)
+                else
+                    call u_coefficients(aU_w,aU_e,sU,nut(1),dnutdy(1),deta,Re_tau,d2etady2(1),detady(1))                   
+                    A(1) = aU_e + aU_w
+                    C_apex(1) = sU
+                    call u_coefficients(aU_w,aU_e,sU,nut(2),dnutdy(2),deta,Re_tau,d2etady2(2),detady(2))
+                    denominator = ( 1.d0 - aU_w * A(1) )
+                    A(2) = aU_e / denominator
+                    C_apex(2) = ( aU_w * C_apex(1) + sU ) / denominator
+                endif
+
+                do j =3,ny
                     call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
                     denominator = ( 1.d0 - aU_w * A(j-1) )
                     A(j) = aU_e / denominator
                     C_apex(j) = ( aU_w * C_apex(j-1) + sU ) / denominator
                 enddo
-                !call u_coefficients(aU_w,aU_e,sU,nut(ny),dnutdy(ny),deta,Re_tau,d2etady2(ny),detady(ny))
-                !denominator = ( 1.d0 - aU_w * A(ny-1) )
-                !A(ny) = aU_e / denominator
-                !C_apex(ny) = ( aU_w * C_apex(ny-1) + sU ) / denominator
-                A(ny-1) = 0.d0
-                U(ny) = 0.d0
 
                 do j =ny-1,2,-1
                     U(j) = A(j) * U(j+1) + C_apex(j)
@@ -269,25 +289,11 @@ MODULE K_EPSILON_MODELS
 
             else
 
-                if(is_wall_1) then
-                    U(1) = 0.d0
-                else
-                    j=1
-                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
-                    U(1) =  sU + (aU_e + aU_w)*U(2)
-                endif
                 do j =2,ny-1
                     call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
                     U(j) =  sU + aU_e*U(j+1) + aU_w*U(j-1)
                     !!!U(j) = A(j) * U(j+1) + C_apex(j)
                 enddo
-                if(is_wall_ny) then
-                    U(ny) = 0.d0
-                else
-                    j=ny
-                    call u_coefficients(aU_w,aU_e,sU,nut(j),dnutdy(j),deta,Re_tau,d2etady2(j),detady(j))
-                    U(ny) =  sU + (aU_e + aU_w)*U(ny-1)
-                endif
 
             endif
 
@@ -311,24 +317,43 @@ MODULE K_EPSILON_MODELS
             integer j
 
             if(is_wall_1) then
-
                 Kt(1) = 0.d0
-                call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2))
-                A(2) = aK_e
-                C_apex(2) = sK + aK_w * Kt(1)
-                do j =3,ny-1
+            else
+                j=1
+                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                Kt(1) = sK + (aK_e + aK_w)*Kt(2)
+            endif
+
+            if(is_wall_ny) then
+                Kt(ny) = 0.d0
+            else
+                j=ny
+                call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
+                Kt(ny) = sK + (aK_e + aK_w)*Kt(ny-1)
+            endif
+
+            if(is_thomas) then
+
+                if(is_wall_1) then
+                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2))
+                    A(2) = aK_e
+                    C_apex(2) = sK + aK_w * Kt(1)
+                else 
+                    call K_coefficients(aK_w,aK_e,sK,eps(1),nut(1),dnutdy(1),dUdy(1),D(1),deta,sigmak,d2etady2(1),detady(1))                   
+                    A(1) = aK_e + aK_w
+                    C_apex(1) = sK
+                    call K_coefficients(aK_w,aK_e,sK,eps(2),nut(2),dnutdy(2),dUdy(2),D(2),deta,sigmak,d2etady2(2),detady(2))
+                    denominator = ( 1.d0 - aK_w * A(1) )
+                    A(2) = aK_e / denominator
+                    C_apex(2) = ( aK_w * C_apex(1) + sK ) / denominator
+                endif
+                do j =3,ny
                     call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
                     denominator = ( 1.d0 - aK_w * A(j-1) )
                     A(j) = aK_e / denominator
                     C_apex(j) = ( aK_w * C_apex(j-1) + sK ) / denominator
                     !print*, ' A(j) = ', A(j),' C_apex(j) = ', C_apex(j)
                 enddo
-                !call K_coefficients(aK_w,aK_e,sK,eps(ny),nut(ny),dnutdy(ny),dUdy(ny),D(ny),deta,sigmak,d2etady2(ny),detady(ny))
-                !denominator = ( 1.d0 - aK_w * A(ny-1) )
-                !A(ny) = aK_e / denominator
-                !C_apex(ny) = ( aK_w * C_apex(ny-1) + sK ) / denominator
-                A(ny-1) = 0.d0
-                Kt(ny) = 0.d0
 
                 do j =ny-1,2,-1
                     Kt(j) = A(j) * Kt(j+1) + C_apex(j)
@@ -336,24 +361,10 @@ MODULE K_EPSILON_MODELS
 
             else
                 
-                if(is_wall_1) then
-                    Kt(1) = 0.d0
-                else
-                    j=1
-                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
-                    Kt(1) = sK + (aK_e + aK_w)*Kt(2)
-                endif
                 do j =2,ny-1
                     call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
                     Kt(j) = sK + aK_e*Kt(j+1) + aK_w*Kt(j-1)
                 enddo
-                if(is_wall_ny) then
-                    Kt(ny) = 0.d0
-                else
-                    j=ny
-                    call K_coefficients(aK_w,aK_e,sK,eps(j),nut(j),dnutdy(j),dUdy(j),D(j),deta,sigmak,d2etady2(j),detady(j))
-                    Kt(ny) = sK + (aK_e + aK_w)*Kt(ny-1)
-                endif
                 
             endif
 
@@ -377,25 +388,49 @@ MODULE K_EPSILON_MODELS
             real*8 A(1:ny),C_apex(1:ny),denominator
             integer j
 
+            if(is_wall_1) then
+                eps(1) = eps_wall_1
+            else 
+                j=1
+                call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
+                d2etady2(j), detady(j), in_source)
+                eps(1) = sE + (aE_e + aE_w)*eps(2)
+            endif
+
+            if(is_wall_ny) then
+                eps(ny) = eps_wall_ny 
+            else 
+                j=ny
+                call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
+                d2etady2(j), detady(j), in_source)
+                eps(ny) = sE + (aE_e + aE_w)*eps(ny-1)
+            endif
+
             if(is_thomas) then
 
-                eps(1) = eps_wall_1
-                call E_coefficients(aE_w,aE_e,sE,eps(2),Kt(2),nut(2),dnutdy(2),dUdy(2),E(2),deta,sigmae,Ce1,f1(2),Ce2,f2(2), &
-                    d2etady2(2),detady(2), in_source)
-                A(2) = aE_e
-                C_apex(2) = sE + aE_w * eps(1)
-                do j =3,ny-1
+                if(is_wall_1) then
+                    call E_coefficients(aE_w,aE_e,sE,eps(2),Kt(2),nut(2),dnutdy(2),dUdy(2),E(2),deta,sigmae,Ce1,f1(2),Ce2,f2(2), &
+                        d2etady2(2),detady(2), in_source)
+                    A(2) = aE_e
+                    C_apex(2) = sE + aE_w * eps(1)
+                else 
+                    call E_coefficients(aE_w,aE_e,sE,eps(1),Kt(1),nut(1),dnutdy(1),dUdy(1),E(1),deta,sigmae,Ce1,f1(1),Ce2,f2(1), &
+                        d2etady2(1),detady(1), in_source)                   
+                    A(1) = aE_e + aE_w
+                    C_apex(1) = sE
+                    call E_coefficients(aE_w,aE_e,sE,eps(2),Kt(2),nut(2),dnutdy(2),dUdy(2),E(2),deta,sigmae,Ce1,f1(2),Ce2,f2(2), &
+                        d2etady2(2),detady(2), in_source)
+                    denominator = ( 1.d0 - aE_w * A(1) )
+                    A(2) = aE_e / denominator
+                    C_apex(2) = ( aE_w * C_apex(1) + sE ) / denominator
+                endif
+                do j =3,ny
                     call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
                     d2etady2(j),detady(j), in_source)
                     denominator = ( 1.d0 - aE_w * A(j-1) )
                     A(j) = aE_e / denominator
                     C_apex(j) = ( aE_w * C_apex(j-1) + sE ) / denominator
                 enddo
-                !call E_coefficients(aE_w,aE_e,sE,eps(ny),Kt(ny),nut(ny),dnutdy(ny),dUdy(ny),E(ny),deta,sigmae,Ce1,f1(j),Ce2,f2(ny), & 
-                !d2etady2(ny),detady(ny), in_source)
-                !denominator = ( 1.d0 - aE_w * A(ny-1) )
-                A(ny-1) = 0.d0
-                eps(ny) = eps_wall_ny
             
                 do j =ny-1,2,-1
                     eps(j) = A(j) * eps(j+1) + C_apex(j)
@@ -403,27 +438,11 @@ MODULE K_EPSILON_MODELS
 
             else
 
-                if(is_wall_1) then
-                    eps(1) = eps_wall_1
-                else 
-                    j=1
-                    call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                    d2etady2(j), detady(j), in_source)
-                    eps(1) = sE + (aE_e + aE_w)*eps(2)
-                endif
                 do j =2,ny-1
                     call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
                     d2etady2(j), detady(j), in_source)
                     eps(j) = sE + aE_e*eps(j+1) + aE_w*eps(j-1)
                 enddo 
-                if(is_wall_ny) then
-                    eps(ny) = eps_wall_ny 
-                else 
-                    j=ny
-                    call E_coefficients(aE_w,aE_e,sE,eps(j),Kt(j),nut(j),dnutdy(j),dUdy(j),E(j),deta,sigmae,Ce1,f1(j),Ce2,f2(j), &
-                    d2etady2(j), detady(j), in_source)
-                    eps(ny) = sE + (aE_e + aE_w)*eps(ny-1)
-                endif
 
             endif
 
