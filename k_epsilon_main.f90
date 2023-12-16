@@ -4,6 +4,38 @@ MODULE K_EPSILON_MODELS
 
     contains
 
+        !!!*************************************************
+        !!!*						         	             *
+        !!!*            initialize K - epsilon 1D                       *
+        !!!*								                 *
+        !!!*************************************************
+
+        subroutine initialize_k_epsilon_1D(y_plus,U,Kt,eps,Re_tau,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Re_tau
+            real*8, intent(out) :: y_plus(1:ny),U(1:ny),kt(1:ny),eps(1:ny)
+            integer j
+            real*8 Kappa, Cmu,y_plus_mid
+
+            Kappa = 4.d-1
+            Cmu = 9.d-2
+            y_plus_mid = 11.635
+
+            do j=1,ny
+                if(y_plus(j)<=y_plus_mid) then
+                    U(j) = y_plus(j)
+                    eps(j) = (y_plus(j)*Kappa -y_plus(j)*y_plus(j)*Kappa/Re_tau)/(Kappa*y_plus_mid)**2.d0 ! 0.1335d0 / ( 1.d0 + ( ( y_plus(j) - 15.515d0 )**2.d0 ) / 166.7634d0 ) !
+                    Kt(j) = dsqrt( (y_plus(j)*Kappa -y_plus(j)*y_plus(j)*Kappa/Re_tau)*eps(j)/Cmu ) ! 0.019678d0 * y_plus(j) * y_plus(j) / ( 1.d0 + ( ( y_plus(j) - 7.28d0 )**2.d0 ) / 88.263d0 ) !
+                else
+                    U(j) = (1.d0/Kappa)*dlog(y_plus(j)) +5.5d0 
+                    eps(j) = (y_plus(j)*Kappa -y_plus(j)*y_plus(j)*Kappa/Re_tau)/(Kappa*y_plus(j))**2.d0 !
+                    Kt(j) = dsqrt( (y_plus(j)*Kappa -y_plus(j)*y_plus(j)*Kappa/Re_tau)*eps(j)/Cmu ) ! 0.019678d0 * y_plus(j) * y_plus(j) / ( 1.d0 + ( ( y_plus(j) - 7.28d0 )**2.d0 ) / 88.263d0 ) !
+                endif
+            enddo
+
+            end
+
         !!!***************************************************
         !!!*						         	               *
         !!!*       Turbulent Reynolds Number 	       	   *
