@@ -50,6 +50,27 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  k_epsilon_constants(model,sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            character(len = 17), intent(in) :: model
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            select case (model)
+            case ("NT")
+                call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case default
+                print*, ' Model Not Recognised. Defaulting to NT. '
+                call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            end select
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       Nagano Takawa K - Epsilon Functions 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -87,6 +108,31 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  k_epsilon_functions(model,nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            character(len = 17), intent(in) :: model
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            select case (model)
+            case ("NT")
+                call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case default
+                print*, ' Model Not Recognised. Defaulting to NT. '
+                call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            end select
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       Nagano Takawa K - Epsilon D,E,eps_wall 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -106,6 +152,31 @@ MODULE K_EPSILON_MODELS
 
             D = 0.d0
             E = 0.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  D_E_epsilon_wall(model,D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            character(len = 17), intent(in) :: model
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            select case (model)
+            case ("NT")
+                call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case default
+                print*, ' Model Not Recognised. Defaulting to NT. '
+                call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            end select
 
             end
 
