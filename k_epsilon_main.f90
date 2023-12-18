@@ -100,6 +100,24 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Lam and Bremhorst K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  lam_bremhorst_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.0d0
+            sigmae= 1.3d0
+            Ce1=1.44d0
+            Ce2=1.92d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -114,6 +132,8 @@ MODULE K_EPSILON_MODELS
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("AB")
                 call abid_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("LB")
+                call lam_bremhorst_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
@@ -176,7 +196,11 @@ MODULE K_EPSILON_MODELS
 
             Ret_min = 1.d-12
             do j=1,ny
-                fmu(j)= dtanh(0.008d0*Ret(j)) * (1.d0 +4.d0/Ret(j)**0.75d0)
+                if (Ret(j) <= Ret_min) then
+                    fmu(j)= dtanh(0.008d0*dsqrt(Kt(j))*y_plus(j)) * (1.d0 +4.d0/Ret(j)**0.75d0)
+                else
+                    fmu(j)= dtanh(0.008d0*dsqrt(Kt(j))*y_plus(j)) * (1.d0 +4.d0/Ret_min**0.75d0)
+                endif
             enddo
 
             do j=1,ny
@@ -185,6 +209,39 @@ MODULE K_EPSILON_MODELS
 
             do j=1,ny
                 f2(j)= (1.d0 -(2.d0/9.d0)*dexp(-(Ret(j)/6.d0)**2.d0))*(1.d0 -dexp(-y_plus(j)/12.d0))
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Lam and Bremhorst K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  lam_bremhorst_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                fmu(j)= ( ( 1.d0 - dexp(-0.0165d0*dsqrt(Kt(j))*y_plus(j)) )**2.d0 ) * (1.d0 +20.5d0/Ret(j))
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -dexp(-Ret(j)**2.d0))
             enddo
 
             f1 = 1.d0
@@ -211,6 +268,8 @@ MODULE K_EPSILON_MODELS
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("AB")
                 call abid_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("LB")
+                call lam_bremhorst_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
@@ -244,11 +303,35 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
-        !!!*       Nagano Takawa K - Epsilon D,E,eps_wall 	       	   *
+        !!!*       Abid K - Epsilon D,E,eps_wall 	       	   *
         !!!*								                   *
         !!!***************************************************
 
         subroutine  abid_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(1)))+4.d0*dsqrt(dabs(Kt(2))) &
+                        -dsqrt(dabs(Kt(3))))/(2.d0*deta) )*detady(1) )**2.d0
+            eps_wall_ny = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(ny)))+4.d0*dsqrt(dabs(Kt(ny-1))) &
+                        -dsqrt(dabs(Kt(ny-1))))/(2.d0*deta) )*detady(ny) )**2.d0
+
+            D = 0.d0
+            E = 0.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Lam and Bremhorst K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  lam_bremhorst_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -286,6 +369,8 @@ MODULE K_EPSILON_MODELS
                 call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("AB")
                 call abid_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("LB")
+                call lam_bremhorst_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
