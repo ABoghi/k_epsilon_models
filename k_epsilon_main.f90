@@ -221,6 +221,24 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Abe, Kondoh and Nagano K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  abe_kondoh_nagano_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.4d0
+            sigmae= 1.4d0
+            Ce1=1.5d0
+            Ce2=1.9d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -243,6 +261,8 @@ MODULE K_EPSILON_MODELS
                 call launder_sharma_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("YS")
                 call yang_shih_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("AKN")
+                call abe_kondoh_nagano_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
@@ -460,6 +480,39 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*   Abe, Kondoh and Nagano K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  abe_kondoh_nagano_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                fmu(j)= (1.d0 + 5.d0 * dexp(-(Ret(j)/2.d+02)**2.d0) / Ret(j)**0.75d0)*(1.d0 -dexp(-y_plus(j)/14.d0))**2.d0
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -0.3d0*dexp(-(Ret(j)/6.5d0)**2.d0))*(1.d0 -dexp(-y_plus(j)/3.1d0))**2.d0
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Functions 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -486,6 +539,8 @@ MODULE K_EPSILON_MODELS
                 call launder_sharma_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("YS")
                 call yang_shih_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("AKN")
+                call abe_kondoh_nagano_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
@@ -547,7 +602,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  lam_bremhorst_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+        subroutine  lam_bremhorst_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -571,8 +626,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  jones_launder_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-            deta,ny)
+        subroutine  jones_launder_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -601,8 +655,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  launder_sharma_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-            deta,ny)
+        subroutine  launder_sharma_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -631,8 +684,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  yang_shih_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-            deta,ny)
+        subroutine  yang_shih_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -651,6 +703,30 @@ MODULE K_EPSILON_MODELS
             call d2deta2(ny,U,d2Udeta2,deta)
 
             E = nut * ( d2Udeta2*detady**2.d0 + dUdeta*d2etady2 )**2.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*  Abe, Kondoh and Nagano K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  abe_kondoh_nagano_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(1)))+4.d0*dsqrt(dabs(Kt(2))) &
+                        -dsqrt(dabs(Kt(3))))/(2.d0*deta) )*detady(1) )**2.d0
+            eps_wall_ny = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(ny)))+4.d0*dsqrt(dabs(Kt(ny-1))) &
+                        -dsqrt(dabs(Kt(ny-1))))/(2.d0*deta) )*detady(ny) )**2.d0
+
+            D = 0.d0
+            E = 0.d0
 
             end
 
@@ -677,14 +753,13 @@ MODULE K_EPSILON_MODELS
             case ("LB")
                 call lam_bremhorst_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("JL")
-                call jones_launder_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-                        deta,ny)
+                call jones_launder_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             case ("LS")
-                call launder_sharma_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-                        deta,ny)
+                call launder_sharma_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             case ("YS")
-                call yang_shih_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
-                        deta,ny)
+                call yang_shih_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+            case ("AKN")
+                call abe_kondoh_nagano_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
