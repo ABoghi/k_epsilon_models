@@ -6,6 +6,55 @@ MODULE K_EPSILON_MODELS
 
         !!!*************************************************
         !!!*						         	             *
+        !!!*                    ddeta                        *
+        !!!*								                 *
+        !!!*************************************************
+            
+        subroutine  ddeta(nr,A,DA,deta)
+            implicit none
+            integer, intent(in) :: nr
+            real*8, intent(in) :: A(1:nr),deta
+            real*8, intent(out) :: DA(1:nr)
+            integer j
+
+            DA(1) =  -(3.d0*A(1) -4.d0*A(2) +A(3))/(2.d0*deta)
+
+            do j=2,nr-1
+                DA(j) = (A(j+1) -A(j-1))/(2.d0*deta)
+            enddo
+
+            DA(nr) = (3.d0*A(nr) -4.d0*A(nr-1) +A(nr-2))/(2.d0*deta)
+
+            end
+
+        !!!*************************************************
+        !!!*						         	             *
+        !!!*                    d2deta2                        *
+        !!!*								                 *
+        !!!*************************************************
+
+        subroutine  d2deta2(nr,A,D2A,deta)
+            implicit none
+            integer, intent(in) :: nr
+            real*8, intent(in) :: A(1:nr),deta
+            real*8, intent(out) :: D2A(1:nr)
+            real*8 deta2
+            integer j
+
+            deta2 = deta*deta
+            
+            D2A(1) =  (12.d0*a(1) -30.d0*a(2) +24.d0*a(3) -6.d0*a(4))/(6.d0*deta2)
+            
+            do j=2,nr-1
+                D2A(j) = (a(j+1) - 2.d0*a(j) + a(j-1))/deta2
+            enddo
+            
+            D2A(nr) = (12.d0*a(nr) -30.d0*a(nr-1) +24.d0*a(nr-2) -6.d0*a(nr-3))/(6.d0*deta2)
+            
+            end
+
+        !!!*************************************************
+        !!!*						         	             *
         !!!*            initialize K - epsilon 1D                       *
         !!!*								                 *
         !!!*************************************************
@@ -64,7 +113,7 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
-        !!!*       Nagano Takawa K - Epsilon Constants 	       	   *
+        !!!*       Nagano and Takawa K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
 
@@ -118,6 +167,42 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Jones and Launder K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  jones_launder_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.0d0
+            sigmae= 1.3d0
+            Ce1=1.45d0
+            Ce2=2.d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Launder and Sharma K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  launder_sharma_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.0d0
+            sigmae= 1.3d0
+            Ce1=1.44d0
+            Ce2=1.92d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -134,6 +219,10 @@ MODULE K_EPSILON_MODELS
                 call abid_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("LB")
                 call lam_bremhorst_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("JL")
+                call jones_launder_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("LS")
+                call launder_sharma_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
@@ -250,6 +339,72 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Jones and Launder K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  jones_launder_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                fmu(j)= dexp(-2.5d0/(1.d0 + Ret(j)/50.d0))
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -0.3d0*dexp(-Ret(j)**2.d0))
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Launder and Sharma K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  launder_sharma_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                fmu(j)= dexp(-3.4d0/(1.d0 + Ret(j)/50.d0))
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -0.3d0*dexp(-Ret(j)**2.d0))
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Functions 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -270,6 +425,10 @@ MODULE K_EPSILON_MODELS
                 call abid_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("LB")
                 call lam_bremhorst_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("JL")
+                call jones_launder_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("LS")
+                call launder_sharma_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
@@ -351,14 +510,72 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Jones and Launder K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  jones_launder_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 dUdeta(1:ny), d2Udeta2(1:ny), uk(1:ny), dukdeta(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 0.d0
+            eps_wall_ny = 0.d0
+
+            uk = dsqrt(Kt)
+            call ddeta(ny,uk,dukdeta,deta)
+            
+            D = 2.d0 * (dukdeta * detady)**2.d0
+
+            call ddeta(ny,U,dUdeta,deta)
+            call d2deta2(ny,U,d2Udeta2,deta)
+
+            E = 2.d0 * nut * ( d2Udeta2*detady**2.d0 + dUdeta*d2etady2 )**2.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Launder and Sharma K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  launder_sharma_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 dUdeta(1:ny), d2Udeta2(1:ny), uk(1:ny), dukdeta(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 0.d0
+            eps_wall_ny = 0.d0
+
+            uk = dsqrt(Kt)
+            call ddeta(ny,uk,dukdeta,deta)
+            
+            D = 2.d0 * (dukdeta * detady)**2.d0
+
+            call ddeta(ny,U,dUdeta,deta)
+            call d2deta2(ny,U,d2Udeta2,deta)
+
+            E = 2.d0 * nut * ( d2Udeta2*detady**2.d0 + dUdeta*d2etady2 )**2.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon D,E,eps_wall 	       	   *
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  D_E_epsilon_wall(model,D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+        subroutine  D_E_epsilon_wall(model,D,E,eps_wall_1,eps_wall_ny,Kt,nut,U,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(in) :: Kt(1:ny),nut(1:ny),U(1:ny),detady(1:ny),d2etady2(1:ny),deta
             character(len = 17), intent(in) :: model
             real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
@@ -371,6 +588,12 @@ MODULE K_EPSILON_MODELS
                 call abid_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("LB")
                 call lam_bremhorst_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("JL")
+                call jones_launder_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+                        deta,ny)
+            case ("LS")
+                call launder_sharma_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+                        deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
@@ -645,10 +868,11 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
             
-        subroutine  solve_Kt_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,D,r,deta,sigmak,ny,is_cartesian,is_thomas, &
+        subroutine  solve_Kt_1D(model,Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,D,r,deta,sigmak,ny,is_cartesian,is_thomas, &
             is_wall_1,is_wall_ny)
             implicit none
             integer, intent(in) :: ny
+            character(len = 17), intent(in) :: model
             real*8, intent(in) :: eps(1:ny),dUdy(1:ny),nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),r(1:ny),D(1:ny)
             real*8, intent(in) :: deta,sigmak
             LOGICAL, INTENT(IN) :: is_cartesian,is_thomas,is_wall_1, is_wall_ny
@@ -724,10 +948,11 @@ MODULE K_EPSILON_MODELS
         !!!*								               *
         !!!*************************************************
             
-        subroutine  solve_eps_1D(Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,E,r,deta,sigmae,ce1,ce2,f1,f2,eps_wall_1,eps_wall_ny, &
-                    ny, is_cartesian,is_thomas,is_wall_1,is_wall_ny,in_source)
+        subroutine  solve_eps_1D(model,Kt,eps,dUdy,nut,dnutdy,detady,d2etady2,E,r,deta,sigmae,ce1,ce2,f1,f2,eps_wall_1, &
+                    eps_wall_ny, ny, is_cartesian,is_thomas,is_wall_1,is_wall_ny,in_source)
             implicit none
             integer, intent(in) :: ny
+            character(len = 17), intent(in) :: model
             real*8, intent(in) :: Kt(1:ny),dUdy(1:ny),nut(1:ny),dnutdy(1:ny),detady(1:ny),d2etady2(1:ny),deta,sigmae
             real*8, intent(in) :: E(1:ny),r(1:ny),ce1,ce2,f1(1:ny),f2(1:ny),eps_wall_1,eps_wall_ny
             LOGICAL, INTENT(IN) :: is_cartesian,is_thomas,is_wall_1, is_wall_ny, in_source
