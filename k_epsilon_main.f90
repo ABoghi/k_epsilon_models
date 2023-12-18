@@ -442,7 +442,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+        subroutine  nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -466,7 +466,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  abid_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+        subroutine  abid_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -490,7 +490,7 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  lam_bremhorst_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+        subroutine  lam_bremhorst_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -514,7 +514,8 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  jones_launder_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+        subroutine  jones_launder_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+            deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -543,7 +544,8 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  launder_sharma_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+        subroutine  launder_sharma_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+            deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: U(1:ny),Kt(1:ny),nut(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -568,11 +570,11 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
-        !!!*       K - Epsilon D,E,eps_wall 	       	   *
+        !!!*       K - Epsilon D,E,eps_wall (1D)	       	   *
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  D_E_epsilon_wall(model,D,E,eps_wall_1,eps_wall_ny,Kt,nut,U,detady,d2etady2,deta,ny)
+        subroutine  D_E_epsilon_wall_1D(model,D,E,eps_wall_1,eps_wall_ny,Kt,nut,U,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),nut(1:ny),U(1:ny),detady(1:ny),d2etady2(1:ny),deta
@@ -583,20 +585,20 @@ MODULE K_EPSILON_MODELS
 
             select case (model)
             case ("NT")
-                call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+                call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("AB")
-                call abid_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+                call abid_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("LB")
-                call lam_bremhorst_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+                call lam_bremhorst_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("JL")
-                call jones_launder_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+                call jones_launder_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
                         deta,ny)
             case ("LS")
-                call launder_sharma_k_epsilon_functions_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
+                call launder_sharma_k_epsilon_functions_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2, &
                         deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
-                call nagano_takawa_D_E_epsilon_wall(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+                call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             end select
 
             end
