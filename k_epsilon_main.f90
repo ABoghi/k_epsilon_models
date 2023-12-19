@@ -257,6 +257,24 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*    Chien K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  chien_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.0d0
+            sigmae= 1.3d0
+            Ce1=1.35d0
+            Ce2=1.8d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -283,6 +301,8 @@ MODULE K_EPSILON_MODELS
                 call abe_kondoh_nagano_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("CHC")
                 call chang_hsieh_chen_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("CH")
+                call chien_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
@@ -570,6 +590,39 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*        Chien K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  chien_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                fmu(j)= (1.d0 - dexp( -0.0115d0*y_plus(j) ))
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -(2.d0/9.d0)*dexp(-(Ret(j)/6.d0)**2.d0))
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Functions 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -600,6 +653,8 @@ MODULE K_EPSILON_MODELS
                 call abe_kondoh_nagano_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("CHC")
                 call chang_hsieh_chen_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("CH")
+                call chien_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
@@ -815,14 +870,36 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Chien K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  chien_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,eps,y_plus,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),eps(1:ny),y_plus(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 0.d0
+            eps_wall_ny = 0.d0
+
+            D = 2.d0 * Kt / y_plus**2.d0
+            E = -( 2.d0 * eps / y_plus**2.d0 ) * dexp(-0.5d0 * y_plus)
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon D,E,eps_wall (1D)	       	   *
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  D_E_epsilon_wall_1D(model,D,E,eps_wall_1,eps_wall_ny,Kt,nut,U,detady,d2etady2,deta,ny)
+        subroutine  D_E_epsilon_wall_1D(model,D,E,eps_wall_1,eps_wall_ny,Kt,eps,y_plus,nut,U,detady,d2etady2,deta,ny)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: Kt(1:ny),nut(1:ny),U(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(in) :: Kt(1:ny),eps(1:ny),nut(1:ny),U(1:ny),y_plus(1:ny),detady(1:ny),d2etady2(1:ny),deta
             character(len = 17), intent(in) :: model
             real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
@@ -845,6 +922,8 @@ MODULE K_EPSILON_MODELS
                 call abe_kondoh_nagano_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("CHC")
                 call chang_hsieh_chen_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("CH")
+                call chien_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,eps,y_plus,detady,d2etady2,deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
