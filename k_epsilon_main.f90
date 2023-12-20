@@ -87,11 +87,11 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
-        !!!*       Turbulent Reynolds Number 	       	   *
+        !!!*       Turbulent Reynolds Number K epsilon	       	   *
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  turbulent_reynolds_number(Ret,kt,eps,ny)
+        subroutine  turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
             implicit none
             integer, intent(in) :: ny
             real*8, intent(in) :: Kt(1:ny),eps(1:ny)
@@ -110,6 +110,26 @@ MODULE K_EPSILON_MODELS
             enddo
 
             end
+
+        !!!***************************************************
+        !!!*						         	               *
+        !!!*       Turbulent Reynolds Number K y_plus	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  turbulent_reynolds_number_k_y_plus(Rey,kt,y_plus,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),y_plus(1:ny)
+            real*8, intent(out) :: Rey(1:ny)
+            integer j
+
+            do j=1,ny
+                Rey(j)= dsqrt(dabs(Kt(j)))*y_plus(j)
+            enddo
+
+            end
+
 
         !!!***************************************************
         !!!*						         	               *
@@ -324,7 +344,7 @@ MODULE K_EPSILON_MODELS
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
@@ -358,17 +378,18 @@ MODULE K_EPSILON_MODELS
             integer, intent(in) :: ny
             real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
             real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
-            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            real*8 Ret(1:ny), Rey(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_y_plus(Rey,kt,y_plus,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
                 if (Ret(j) <= Ret_min) then
-                    fmu(j)= dtanh(0.008d0*dsqrt(Kt(j))*y_plus(j)) * (1.d0 +4.d0/Ret(j)**0.75d0)
+                    fmu(j)= dtanh(0.008d0*Rey(j)) * (1.d0 +4.d0/Ret(j)**0.75d0)
                 else
-                    fmu(j)= dtanh(0.008d0*dsqrt(Kt(j))*y_plus(j)) * (1.d0 +4.d0/Ret_min**0.75d0)
+                    fmu(j)= dtanh(0.008d0*Rey(j)) * (1.d0 +4.d0/Ret_min**0.75d0)
                 endif
             enddo
 
@@ -395,14 +416,15 @@ MODULE K_EPSILON_MODELS
             integer, intent(in) :: ny
             real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
             real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
-            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            real*8 Ret(1:ny), Rey(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_y_plus(Rey,kt,y_plus,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
-                fmu(j)= ( ( 1.d0 - dexp(-0.0165d0*dsqrt(Kt(j))*y_plus(j)) )**2.d0 ) * (1.d0 +20.5d0/Ret(j))
+                fmu(j)= ( ( 1.d0 - dexp(-0.0165d0*Rey(j)) )**2.d0 ) * (1.d0 +20.5d0/Ret(j))
             enddo
 
             do j=1,ny
@@ -413,7 +435,7 @@ MODULE K_EPSILON_MODELS
                 f2(j)= (1.d0 -dexp(-Ret(j)**2.d0))
             enddo
 
-            f1 = 1.d0
+            f1 = 1.d0 + (0.05d0 / fmu)**2.d0
 
             end
 
@@ -431,7 +453,7 @@ MODULE K_EPSILON_MODELS
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
@@ -464,7 +486,7 @@ MODULE K_EPSILON_MODELS
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
@@ -494,16 +516,16 @@ MODULE K_EPSILON_MODELS
             integer, intent(in) :: ny
             real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
             real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
-            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            real*8 Ret(1:ny), Rey(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_y_plus(Rey,kt,y_plus,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
-                fmu(j)= dsqrt( 1.d0 - dexp( -1.5d-04 * dsqrt(Kt(j))*y_plus(j) & 
-                        -5.d-07 * ( dsqrt(Kt(j))*y_plus(j) )**3.d0 &
-                        -1.5-10 * ( dsqrt(Kt(j))*y_plus(j) )**5.d0 ) ) * ( 1.d0 + 1.d0 / dsqrt(Ret(j)) )
+                fmu(j)= dsqrt( 1.d0 - dexp( -1.5d-04 * Rey(j) -5.d-07 * Rey(j)**3.d0 &
+                        -1.5-10 * Rey(j)**5.d0 ) ) * ( 1.d0 + 1.d0 / dsqrt(Ret(j)) )
             enddo
 
             do j=1,ny
@@ -532,7 +554,7 @@ MODULE K_EPSILON_MODELS
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
@@ -562,17 +584,18 @@ MODULE K_EPSILON_MODELS
             integer, intent(in) :: ny
             real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
             real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
-            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            real*8 Ret(1:ny), Rey(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_y_plus(Rey,kt,y_plus,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
                 if(Ret(j)<=Ret_min) then
-                    fmu(j)= ( (1.d0 - dexp( -0.0215d0*dsqrt(Kt(j))*y_plus(j) ))**2.d0 ) * (1.d0 + 31.66d0 / Ret_min**1.25d0)
+                    fmu(j)= ( (1.d0 - dexp( -0.0215d0*Rey(j)))**2.d0 ) * (1.d0 + 31.66d0 / Ret_min**1.25d0)
                 else
-                    fmu(j)= ( (1.d0 - dexp( -0.0215d0*dsqrt(Kt(j))*y_plus(j) ))**2.d0 ) * (1.d0 + 31.66d0 / Ret(j)**1.25d0)
+                    fmu(j)= ( (1.d0 - dexp( -0.0215d0*Rey(j) ))**2.d0 ) * (1.d0 + 31.66d0 / Ret(j)**1.25d0)
                 endif
             enddo
 
@@ -581,7 +604,7 @@ MODULE K_EPSILON_MODELS
             enddo
 
             do j=1,ny
-                f2(j)= (1.d0 -0.01d0*dexp(-Ret(j)**2.d0))*(1.d0 -dexp(-0.0631d0*dsqrt(Kt(j))*y_plus(j)))
+                f2(j)= (1.d0 -0.01d0*dexp(-Ret(j)**2.d0))*(1.d0 -dexp(-0.0631d0*Rey(j)))
             enddo
 
             f1 = 1.d0
@@ -602,7 +625,7 @@ MODULE K_EPSILON_MODELS
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
             integer j
 
-            call turbulent_reynolds_number(Ret,kt,eps,ny)
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
 
             Ret_min = 1.d-12
             do j=1,ny
