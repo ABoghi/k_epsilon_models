@@ -295,6 +295,24 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*    Myong and Kasagi K - Epsilon Constants 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  myong_kasagi_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            implicit none
+            real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
+
+            sigmaK= 1.4d0
+            sigmae= 1.3d0
+            Ce1=1.4d0
+            Ce2=1.8d0
+            Cmu=0.09d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Constants 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -305,24 +323,26 @@ MODULE K_EPSILON_MODELS
             real*8, intent(out) :: sigmak,sigmae,Ce1,Ce2,Cmu
 
             select case (model)
-            case ("NT")
-                call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("AB")
                 call abid_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
-            case ("LB")
-                call lam_bremhorst_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
-            case ("JL")
-                call jones_launder_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
-            case ("LS")
-                call launder_sharma_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
-            case ("YS")
-                call yang_shih_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("AKN")
                 call abe_kondoh_nagano_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
-            case ("CHC")
-                call chang_hsieh_chen_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case ("CH")
                 call chien_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("CHC")
+                call chang_hsieh_chen_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("JL")
+                call jones_launder_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("LB")
+                call lam_bremhorst_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("LS")
+                call launder_sharma_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("MK")
+                call myong_kasagi_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("NT")
+                call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
+            case ("YS")
+                call yang_shih_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_constants(sigmak,sigmae,Ce1,Ce2,Cmu)
@@ -646,6 +666,43 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*   Myong and Kasagi K - Epsilon Functions 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  myong_kasagi_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: y_plus(1:ny),Kt(1:ny),eps(1:ny),Cmu
+            real*8, intent(out) :: nut(1:ny),f1(1:ny),f2(1:ny)
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            call turbulent_reynolds_number_k_epsilon(Ret,kt,eps,ny)
+
+            Ret_min = 1.d-12
+            do j=1,ny
+                if(Ret(j)<=Ret_min) then
+                    fmu(j)= (1.d0 - dexp( -y_plus(j)/70.d0 )) * (1.d0 + 3.45d0/dsqrt(Ret_min) )
+                else
+                    fmu(j)= (1.d0 - dexp( -y_plus(j)/70.d0 )) * (1.d0 + 3.45d0/dsqrt(Ret(j)) )
+                endif
+            enddo
+
+            do j=1,ny
+                nuT(j)= Cmu*fmu(j)*Ret(j)
+            enddo
+
+            do j=1,ny
+                f2(j)= (1.d0 -(2.d0/9.d0)*dexp(-(Ret(j)/6.d0)**2.d0)) * (1.d0 - dexp( -y_plus(j)/5.d0) )**2.d0
+            enddo
+
+            f1 = 1.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon Functions 	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -660,24 +717,27 @@ MODULE K_EPSILON_MODELS
             integer j
 
             select case (model)
-            case ("NT")
-                call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            
             case ("AB")
                 call abid_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
-            case ("LB")
-                call lam_bremhorst_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
-            case ("JL")
-                call jones_launder_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
-            case ("LS")
-                call launder_sharma_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
-            case ("YS")
-                call yang_shih_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("AKN")
                 call abe_kondoh_nagano_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
-            case ("CHC")
-                call chang_hsieh_chen_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case ("CH")
                 call chien_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("CHC")
+                call chang_hsieh_chen_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("JL")
+                call jones_launder_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("LB")
+                call lam_bremhorst_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("LS")
+                call launder_sharma_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("MK")
+                call myong_kasagi_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("NT")
+                call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
+            case ("YS")
+                call yang_shih_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_k_epsilon_functions(nut,f1,f2,ny,y_plus,kt,eps,Cmu)
@@ -915,6 +975,30 @@ MODULE K_EPSILON_MODELS
 
         !!!***************************************************
         !!!*						         	               *
+        !!!*       Myong and Kasagi K - Epsilon D,E,eps_wall 	       	   *
+        !!!*								                   *
+        !!!***************************************************
+
+        subroutine  myong_kasagi_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            implicit none
+            integer, intent(in) :: ny
+            real*8, intent(in) :: Kt(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
+            real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
+            integer j
+
+            eps_wall_1 = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(1)))+4.d0*dsqrt(dabs(Kt(2))) &
+                        -dsqrt(dabs(Kt(3))))/(2.d0*deta) )*detady(1) )**2.d0
+            eps_wall_ny = 2.d0*( ( (-3.d0*dsqrt(dabs(Kt(ny)))+4.d0*dsqrt(dabs(Kt(ny-1))) &
+                        -dsqrt(dabs(Kt(ny-1))))/(2.d0*deta) )*detady(ny) )**2.d0
+
+            D = 0.d0
+            E = 0.d0
+
+            end
+
+        !!!***************************************************
+        !!!*						         	               *
         !!!*       K - Epsilon D,E,eps_wall (1D)	       	   *
         !!!*								                   *
         !!!***************************************************
@@ -929,24 +1013,26 @@ MODULE K_EPSILON_MODELS
             integer j
 
             select case (model)
-            case ("NT")
-                call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("AB")
                 call abid_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
-            case ("LB")
-                call lam_bremhorst_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
-            case ("JL")
-                call jones_launder_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
-            case ("LS")
-                call launder_sharma_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
-            case ("YS")
-                call yang_shih_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             case ("AKN")
                 call abe_kondoh_nagano_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
-            case ("CHC")
-                call chang_hsieh_chen_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
             case ("CH")
                 call chien_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,eps,y_plus,detady,d2etady2,deta,ny)
+            case ("CHC")
+                call chang_hsieh_chen_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("JL")
+                call jones_launder_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+            case ("LB")
+                call lam_bremhorst_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("LS")
+                call launder_sharma_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
+            case ("MK")
+                call myong_kasagi_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("NT")
+                call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
+            case ("YS")
+                call yang_shih_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,U,Kt,nut,detady,d2etady2,deta,ny)
             case default
                 print*, ' Model Not Recognised. Defaulting to NT. '
                 call nagano_takawa_D_E_epsilon_wall_1D(D,E,eps_wall_1,eps_wall_ny,Kt,detady,d2etady2,deta,ny)
