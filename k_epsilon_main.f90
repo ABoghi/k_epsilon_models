@@ -1101,10 +1101,10 @@ MODULE K_EPSILON_MODELS
         !!!*								                   *
         !!!***************************************************
 
-        subroutine  D_E_epsilon_wall_1D(model,D,E,eps_wall_1,eps_wall_ny,Kt,eps,y_plus,nut,U,detady,d2etady2,deta,ny)
+        subroutine  D_E_epsilon_wall_1D(model,D,E,eps_wall_1,eps_wall_ny,Kt,eps,f2,y_plus,nut,U,detady,d2etady2,deta,Ce2,ny)
             implicit none
             integer, intent(in) :: ny
-            real*8, intent(in) :: Kt(1:ny),eps(1:ny),nut(1:ny),U(1:ny),y_plus(1:ny),detady(1:ny),d2etady2(1:ny),deta
+            real*8, intent(in) :: Kt(1:ny),eps(1:ny),nut(1:ny),U(1:ny),y_plus(1:ny),detady(1:ny),d2etady2(1:ny),f2(1:ny),Ce2,deta
             character(len = 17), intent(in) :: model
             real*8, intent(out) :: D(1:ny),E(1:ny),eps_wall_1,eps_wall_ny
             real*8 Ret(1:ny), fmu(1:ny), Ret_min, eps_min
